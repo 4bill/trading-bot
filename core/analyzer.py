@@ -1,12 +1,14 @@
-"""Market analysis: fetch OHLCV via ccxt, compute simple indicators, emit a signal."""
+"""Market analysis: fetch OHLCV via ccxt, compute simple indicators, emit a signal.
+
+Pure-Python implementation (no pandas / numpy) so the container stays small and
+installs quickly on free hosts.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Iterable, List, Literal
 
 import ccxt
-import numpy as np
-import pandas as pd
 
 Signal = Literal["BUY", "SELL", "HOLD"]
 
@@ -35,24 +37,56 @@ class AnalysisResult:
         }
 
 
-def _rsi(series: pd.Series, period: int = 14) -> pd.Series:
-    delta = series.diff()
-    gain = delta.clip(lower=0).ewm(alpha=1 / period, adjust=False).mean()
-    loss = (-delta.clip(upper=0)).ewm(alpha=1 / period, adjust=False).mean()
-    rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs))
-    return rsi.fillna(50.0)
+def _ema_series(values: Iterable[float], span: int) -> List[float]:
+    """Exponential moving average, same convention as pandas ewm(span=span, adjust=False)."""
+    alpha = 2 / (span + 1)
+    out: List[float] = []
+    prev: float | None = None
+    for v in values:
+        if prev is None:
+            prev = float(v)
+        else:
+            prev = alpha * float(v) + (1 - alpha) * prev
+        out.append(prev)
+    return out
 
 
-def _fetch_ohlcv(exchange_name: str, symbol: str, timeframe: str, limit: int = 200) -> pd.DataFrame:
+def _rsi_series(values: List[float], period: int = 14) -> List[float]:
+    """Wilder's RSI using EWM-like smoothing; matches pandas version for period>=2."""
+    if len(values) < 2:
+        return [50.0] * len(values)
+
+    alpha = 1 / period
+    gains_ema: float | None = None
+    losses_ema: float | None = None
+    rsi: List[float] = [50.0]  # first value: neutral
+
+    for i in range(1, len(values)):
+        change = values[i] - values[i - 1]
+        gain = max(change, 0.0)
+        loss = max(-change, 0.0)
+        if gains_ema is None:
+            gains_ema = gain
+            losses_ema = loss
+        else:
+            gains_ema = alpha * gain + (1 - alpha) * gains_ema
+            losses_ema = alpha * loss + (1 - alpha) * losses_ema
+        if losses_ema == 0:
+            rsi.append(100.0 if gains_ema and gains_ema > 0 else 50.0)
+        else:
+            rs = (gains_ema or 0) / losses_ema
+            rsi.append(100 - (100 / (1 + rs)))
+    return rsi
+
+
+def _fetch_closes(exchange_name: str, symbol: str, timeframe: str, limit: int = 200) -> List[float]:
     ex_cls = getattr(ccxt, exchange_name.lower(), None)
     if ex_cls is None:
         raise ValueError(f"Unknown exchange: {exchange_name}")
     ex = ex_cls({"enableRateLimit": True})
     ohlcv = ex.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-    df = pd.DataFrame(ohlcv, columns=["ts", "open", "high", "low", "close", "volume"])
-    df["ts"] = pd.to_datetime(df["ts"], unit="ms")
-    return df
+    # rows are [ts, open, high, low, close, volume]
+    return [float(row[4]) for row in ohlcv]
 
 
 def analyze(
@@ -65,23 +99,26 @@ def analyze(
     ema_slow: int = 21,
 ) -> AnalysisResult:
     """Run a simple RSI + EMA-cross analysis and return a trading signal."""
-    df = _fetch_ohlcv(exchange, symbol, timeframe)
-    if len(df) < max(rsi_period, ema_slow) + 2:
+    closes = _fetch_closes(exchange, symbol, timeframe)
+    if len(closes) < max(rsi_period, ema_slow) + 2:
         raise ValueError("Not enough candles returned to analyze.")
 
-    close = df["close"]
-    df["rsi"] = _rsi(close, rsi_period)
-    df["ema_f"] = close.ewm(span=ema_fast, adjust=False).mean()
-    df["ema_s"] = close.ewm(span=ema_slow, adjust=False).mean()
+    rsi_vals = _rsi_series(closes, rsi_period)
+    ema_f_vals = _ema_series(closes, ema_fast)
+    ema_s_vals = _ema_series(closes, ema_slow)
 
-    last = df.iloc[-1]
-    prev = df.iloc[-2]
+    last_rsi = rsi_vals[-1]
+    last_ema_f = ema_f_vals[-1]
+    last_ema_s = ema_s_vals[-1]
+    prev_ema_f = ema_f_vals[-2]
+    prev_ema_s = ema_s_vals[-2]
+    last_close = closes[-1]
 
     signal: Signal = "HOLD"
-    reasons: list[str] = []
+    reasons: List[str] = []
 
-    crossed_up = prev["ema_f"] <= prev["ema_s"] and last["ema_f"] > last["ema_s"]
-    crossed_down = prev["ema_f"] >= prev["ema_s"] and last["ema_f"] < last["ema_s"]
+    crossed_up = prev_ema_f <= prev_ema_s and last_ema_f > last_ema_s
+    crossed_down = prev_ema_f >= prev_ema_s and last_ema_f < last_ema_s
 
     if strategy in ("rsi_ema", "ema_cross"):
         if crossed_up:
@@ -92,11 +129,11 @@ def analyze(
             signal = "SELL"
 
     if strategy in ("rsi_ema", "rsi"):
-        if last["rsi"] < 30 and signal != "SELL":
-            reasons.append(f"RSI {last['rsi']:.1f} < 30 (oversold)")
+        if last_rsi < 30 and signal != "SELL":
+            reasons.append(f"RSI {last_rsi:.1f} < 30 (oversold)")
             signal = "BUY"
-        elif last["rsi"] > 70 and signal != "BUY":
-            reasons.append(f"RSI {last['rsi']:.1f} > 70 (overbought)")
+        elif last_rsi > 70 and signal != "BUY":
+            reasons.append(f"RSI {last_rsi:.1f} > 70 (overbought)")
             signal = "SELL"
 
     if not reasons:
@@ -105,10 +142,10 @@ def analyze(
     return AnalysisResult(
         symbol=symbol,
         timeframe=timeframe,
-        last_price=float(last["close"]),
-        rsi=float(last["rsi"]),
-        ema_fast=float(last["ema_f"]),
-        ema_slow=float(last["ema_s"]),
+        last_price=last_close,
+        rsi=last_rsi,
+        ema_fast=last_ema_f,
+        ema_slow=last_ema_s,
         signal=signal,
         reason="; ".join(reasons),
     )
