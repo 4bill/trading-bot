@@ -33,6 +33,21 @@ files (`app.py`, `bot/`, `webapp/`, `render.yaml`, etc.).
 
 ---
 
+## Free hosting options (pick ONE)
+
+All three are $0 and work from your phone. If one asks for a credit card, try the next.
+
+| # | Service | Credit card? | Sleeps when idle? |
+|---|---|---|---|
+| A | Render (Free tier) | No (GitHub signup) | Yes, ~15 min |
+| B | Koyeb (Eco / Hobby) | No | No |
+| C | Hugging Face Spaces | No, ever | No (48h idle kick) |
+
+Instructions below are for **Render (A)**. If you picked B or C, see the
+"Alternatives" section at the bottom.
+
+---
+
 ## Step 2 — Create a free Render account
 
 [Render](https://render.com) gives free hosting + automatic HTTPS, which is
@@ -122,3 +137,34 @@ messages while asleep. Options:
 - *"Can I add another strategy?"* → add a branch in `core/analyzer.py` and a new `<option>` in the form.
 - *"How do I see logs?"* → Render dashboard → your service → **Logs** tab.
 - *"How do I stop it?"* → Render dashboard → **Suspend**.
+
+
+---
+
+## Alternative B — Koyeb (no sleep, no credit card)
+
+1. Open https://www.koyeb.com on your phone → **Sign up with GitHub**.
+2. Dashboard → **Create App** → **GitHub** → pick `4bill/trading-bot`.
+3. Service type: **Web service**. Builder: **Buildpack** (auto-detects Python).
+4. Set the port to **8080**. Instance type: **Free / Eco**.
+5. Under **Environment variables** add:
+   - `TELEGRAM_BOT_TOKEN` = your BotFather token
+   - `WEBAPP_URL` = leave blank for first deploy
+6. Tap **Deploy**. Wait ~3 min. Copy the `https://...koyeb.app` URL.
+7. Go back to **Settings → Env vars**, set `WEBAPP_URL` to that URL, **Redeploy**.
+
+## Alternative C — Hugging Face Spaces (truly free forever)
+
+1. Open https://huggingface.co on your phone → **Sign up** (email only, no card).
+2. Top right avatar → **New Space**.
+3. Name: `trading-bot`. **SDK: Docker**. **Hardware: CPU basic (free)**. **Visibility: Private** (important — keeps your token secret).
+4. Create the Space. It gives you a git URL like `https://huggingface.co/spaces/<you>/trading-bot`.
+5. On your phone browser, open the Space → **Files** tab → **"Contribute"** → **"Upload files"** isn't phone-friendly, so instead use the **"Git"** tab to link your GitHub repo:
+   - Or simplest path: on your `trading-bot` GitHub repo page, tap **⋯ → "Mirror"** isn't a thing, so use Space's **Files → "..."  → "Import from GitHub"** and enter `4bill/trading-bot`.
+6. In the Space, tap **Settings → Variables and secrets**:
+   - Add secret `TELEGRAM_BOT_TOKEN` = your token
+   - Add variable `WEBAPP_URL` = `https://<your-user>-trading-bot.hf.space` (shown on the Space page once it builds)
+   - Add variable `PORT` = `7860`
+7. Wait for the Space status to say **Running**. Test `https://<your-user>-trading-bot.hf.space/static/index.html`.
+
+The `Dockerfile` in your repo already targets port 7860 so HF Spaces works out of the box.
