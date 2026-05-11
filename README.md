@@ -1,3 +1,13 @@
+---
+title: Trading Bot
+emoji: "\U0001F4B9"
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Trading Bot — Telegram Mini App
 
 A Telegram bot that opens a **Mini App form** where you pick a symbol / timeframe / strategy,
