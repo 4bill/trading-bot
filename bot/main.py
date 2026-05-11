@@ -32,11 +32,6 @@ log = logging.getLogger("bot")
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
-if not BOT_TOKEN:
-    raise SystemExit("TELEGRAM_BOT_TOKEN is not set. Put it in .env")
-if not WEBAPP_URL.startswith("https://"):
-    raise SystemExit("WEBAPP_URL must be an https:// URL (Telegram requires HTTPS for Mini Apps).")
-
 dp = Dispatcher()
 
 
@@ -96,6 +91,10 @@ async def on_any(message: Message) -> None:
 
 
 async def main() -> None:
+    if not BOT_TOKEN:
+        raise SystemExit("TELEGRAM_BOT_TOKEN is not set. Put it in .env or env vars.")
+    if not WEBAPP_URL.startswith("https://"):
+        raise SystemExit("WEBAPP_URL must be an https:// URL (Telegram requires HTTPS for Mini Apps).")
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     log.info("Bot starting; webapp URL = %s", WEBAPP_URL)
     await dp.start_polling(bot)

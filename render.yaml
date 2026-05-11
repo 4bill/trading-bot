@@ -1,0 +1,25 @@
+# Render Blueprint — one-click deploy config.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: trading-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false   # set this in the Render dashboard
+      - key: WEBAPP_URL
+        sync: false   # set to your Render service's https URL after first deploy
+      - key: EXCHANGE
+        value: binance
+      - key: EXCHANGE_TESTNET
+        value: "true"
+      - key: EXCHANGE_API_KEY
+        sync: false
+      - key: EXCHANGE_API_SECRET
+        sync: false
