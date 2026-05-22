@@ -41,6 +41,23 @@ python app.py
 Open http://localhost:8090 — you should see the dashboard. Add a project, add a
 few tasks, and you're done.
 
+### 📱 Running on Android (Termux)
+
+This app is designed to run 24/7 on your phone. See **[TERMUX.md](./TERMUX.md)**
+for the full step-by-step guide (covers Termux:Boot auto-start, wake-lock, and
+Telegram setup).
+
+Quick version:
+
+```bash
+pkg install -y python git rust binutils
+git clone https://github.com/4bill/trading-bot.git
+cd trading-bot/airdrop-manager
+chmod +x start.sh
+./start.sh --bg          # background, logs in logs/app.log
+termux-wake-lock         # keep alive when screen is off
+```
+
 ## ⚙️ Configuration
 
 All settings come from environment variables (or the `.env` file). See
