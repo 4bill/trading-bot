@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Airdrop Manager</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --fg: #e7e9ee;
+      --muted: #8a93a3;
+      --card: #161a22;
+      --border: #252b36;
+      --accent: #2ea6ff;
+      --accent-fg: #ffffff;
+      --danger: #ff5b5b;
+      --ok: #31c48d;
+      --warn: #f5a524;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+      font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    header h1 { font-size: 20px; margin: 0; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tabs button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+      background: #0e1219; color: var(--fg); cursor: pointer; }
+    .tabs button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px; margin-bottom: 14px; }
+    .card h2 { font-size: 15px; margin: 0 0 10px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+    input, select, textarea { width: 100%; padding: 9px 11px; border-radius: 8px;
+      border: 1px solid var(--border); background: #0e1219; color: var(--fg); font: inherit; }
+    textarea { min-height: 60px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .btn { padding: 9px 14px; border-radius: 8px; border: 0; font-weight: 600;
+      background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+    .btn.secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+    .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--border); }
+    .btn.sm { padding: 4px 10px; font-size: 13px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+    .pill.testnet { background: rgba(46,166,255,.15); color: var(--accent); }
+    .pill.bridge_swap { background: rgba(245,165,36,.15); color: var(--warn); }
+    .pill.daily_claim { background: rgba(49,196,141,.15); color: var(--ok); }
+    .pill.other { background: rgba(138,147,163,.2); color: var(--muted); }
+    .priority-1 { border-left: 3px solid var(--danger); }
+    .priority-2 { border-left: 3px solid var(--warn); }
+    .priority-3 { border-left: 3px solid var(--muted); }
+    .progress { height: 8px; background: #0e1219; border-radius: 999px; overflow: hidden; margin: 6px 0; }
+    .progress > span { display: block; height: 100%; background: var(--accent); }
+    .task-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 6px; }
+    .task-row.done { opacity: .55; }
+    .task-row .left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .task-row .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--border);
+      background: #0e1219; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .checkbox.done { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; }
+    .summary-grid .stat { background: #0e1219; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    .summary-grid .stat b { font-size: 22px; }
+    @media (max-width: 540px) {
+      .row, .row-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🪂 Airdrop Manager</h1>
+    <button class="btn secondary sm" id="refresh-btn">Refresh</button>
+  </header>
+
+  <div class="tabs">
+    <button class="on" data-tab="dashboard">Dashboard</button>
+    <button data-tab="projects">Projects</button>
+    <button data-tab="wallets">Wallets</button>
+    <button data-tab="settings">Settings</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <section data-pane="dashboard">
+    <div class="card">
+      <h2>Today's progress</h2>
+      <div class="progress"><span id="progress-bar" style="width:0%"></span></div>
+      <div class="summary-grid" id="summary-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Tasks by project</h2>
+      <div id="dashboard-projects"></div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section data-pane="projects" hidden>
+    <div class="card">
+      <h2>Add project</h2>
+      <div class="row">
+        <div>
+          <label>Name</label>
+          <input id="p-name" placeholder="e.g. zkSync Era" />
+        </div>
+        <div>
+          <label>Category</label>
+          <select id="p-category">
+            <option value="testnet">Testnet</option>
+            <option value="bridge_swap">Bridge / Swap</option>
+            <option value="daily_claim">Daily Claim</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="row-3">
+        <div>
+          <label>Chain</label>
+          <input id="p-chain" placeholder="e.g. Linea, Scroll" />
+        </div>
+        <div>
+          <label>Priority</label>
+          <select id="p-priority">
+            <option value="1">High</option>
+            <option value="2" selected>Medium</option>
+            <option value="3">Low</option>
+          </select>
+        </div>
+        <div>
+          <label>URL</label>
+          <input id="p-url" placeholder="https://..." />
+        </div>
+      </div>
+      <label>Notes</label>
+      <textarea id="p-notes" placeholder="Quest link, gas budget, etc."></textarea>
+      <div style="margin-top:10px"><button class="btn" id="p-add">+ Add project</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Add task</h2>
+      <div class="row-3">
+        <div>
+          <label>Project</label>
+          <select id="t-project"></select>
+        </div>
+        <div>
+          <label>Cadence</label>
+          <select id="t-cadence">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="once">Once</option>
+          </select>
+        </div>
+        <div>
+          <label>Wallet (optional)</label>
+          <select id="t-wallet"><option value="">— none —</option></select>
+        </div>
+      </div>
+      <label>Title</label>
+      <input id="t-title" placeholder="e.g. Daily check-in / Bridge 0.001 ETH" />
+      <div style="margin-top:10px"><button class="btn" id="t-add">+ Add task</button></div>
+    </div>
+
+    <div class="card">
+      <h2>All projects</h2>
+      <div id="projects-list"></div>
+    </div>
+  </section>
+
+  <!-- WALLETS -->
+  <section data-pane="wallets" hidden>
+    <div class="card">
+      <h2>Add wallet</h2>
+      <p class="muted">⚠ Only store the public address &amp; a label. <b>Never paste private keys here.</b></p>
+      <div class="row">
+        <div>
+          <label>Label</label>
+          <input id="w-label" placeholder="e.g. Main / Wallet 02" />
+        </div>
+        <div>
+          <label>Chain</label>
+          <input id="w-chain" placeholder="e.g. EVM / Solana" />
+        </div>
+      </div>
+      <label>Address</label>
+      <input id="w-address" placeholder="0x..." />
+      <label>Notes</label>
+      <textarea id="w-notes"></textarea>
+      <div style="margin-top:10px"><button class="btn" id="w-add">+ Add wallet</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Wallets</h2>
+      <div id="wallets-list"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section data-pane="settings" hidden>
+    <div class="card">
+      <h2>Telegram reminder</h2>
+      <p class="muted">Set <code>TELEGRAM_BOT_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> in <code>.env</code>, then restart.</p>
+      <button class="btn" id="notify-test">Send test summary</button>
+      <pre id="notify-out" class="muted" style="margin-top:8px;white-space:pre-wrap"></pre>
+    </div>
+    <div class="card">
+      <h2>Danger zone</h2>
+      <button class="btn secondary" id="reset-daily">Reset daily tasks now</button>
+      <p class="muted" style="margin-top:6px">Marks every <i>daily</i> task back to pending. Runs automatically each day.</p>
+    </div>
+  </section>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
