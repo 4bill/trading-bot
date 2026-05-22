@@ -1,8 +1,14 @@
 # 📱 Running on Android with Termux
 
 This guide gets the airdrop manager running 24/7 on your phone. After setup
-you'll have a dashboard at **http://localhost:8090** in your phone's browser
-plus Telegram reminders, all surviving screen-off and reboots.
+you'll have **two ways to use it**:
+
+1. **Telegram bot** (primary) — DM your bot, tap `/today` and inline buttons to
+   mark tasks done. No need to keep a browser tab open.
+2. **Web dashboard** at `http://localhost:8090` — handy for bulk-adding the
+   first 15 projects via forms.
+
+Plus auto reminders twice a day. Everything survives screen-off and reboots.
 
 > ⚠️ **Install Termux from F-Droid, NOT the Play Store.**
 > The Play Store version is outdated and broken. Get it here:
@@ -79,11 +85,19 @@ Save with `Ctrl+O`, `Enter`, then `Ctrl+X`.
 ```bash
 ./start.sh
 ```
-Open Chrome / Firefox on the same phone → `http://localhost:8090`. Tabs:
-- **Dashboard** — today's progress + tasks per project
-- **Projects** — add the 15+ airdrops you're farming
-- **Wallets** — labels + addresses (no private keys, ever)
-- **Settings** — send a Telegram test, manual daily reset
+
+You should see logs like `Scheduler started` and `Telegram bot started (long-polling)`.
+
+Now you can use it two ways:
+
+**(a) Via Telegram (recommended for daily ops)** — open Telegram, find your bot,
+send `/start`, then `/today` to see pending tasks with tap-to-done buttons.
+See the [bot commands table](./README.md#-telegram-bot-commands) in the README.
+
+**(b) Via the web dashboard** — open Chrome / Firefox on the same phone →
+`http://localhost:8090`. Tabs: **Dashboard**, **Projects**, **Wallets**,
+**Settings**. Best for bulk-adding the first 15 projects (a form is faster
+than typing slash commands on a phone keyboard).
 
 Press `Ctrl+C` to stop.
 
@@ -173,6 +187,17 @@ If it says `Address already in use`, run `./start.sh --stop` first.
 - Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`
 - Make sure you've sent **at least one message** to your bot first (Telegram
   bots can't initiate conversations).
+
+**Bot replies "Unauthorized" to my messages**
+Your `TELEGRAM_CHAT_ID` doesn't match. Send a message to
+[@userinfobot](https://t.me/userinfobot) and copy the numeric `Id` it shows
+into your `.env`, then restart with `./start.sh --stop && ./start.sh --bg`.
+
+**Bot doesn't respond at all**
+- Check `tail -f logs/app.log` for `Telegram bot started (long-polling)`
+- If it says "bot disabled (no TELEGRAM_BOT_TOKEN)", your `.env` is missing the token
+- Only one process can long-poll a bot at a time. Make sure you don't have a
+  duplicate instance still running: `./start.sh --status`
 
 **Phone gets warm**
 Normal — Python is alive 24/7. The CPU usage is essentially 0% when idle (the

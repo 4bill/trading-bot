@@ -1,21 +1,27 @@
 # 🪂 Airdrop Manager
 
-Lightweight FastAPI dashboard to track 15+ crypto airdrop projects across multiple
-wallets without losing your sanity.
+Lightweight tracker for 15+ crypto airdrop projects across multiple wallets,
+designed to run 24/7 on a phone via Termux.
 
-Built for the **testnet / bridge-swap / daily-claim** kind of farming workflow:
-add your projects once, define their daily tasks, then just tap ✓ as you finish them.
-Telegram reminders ping you twice a day so nothing slips through.
+Two interfaces, same data:
+
+1. **Telegram bot** — primary interface for daily monitoring on mobile.
+   Tap inline buttons to mark tasks done, get summaries on demand, quick-add via slash commands.
+2. **Web dashboard** at `:8090` — convenient for bulk setup
+   (adding the 15+ projects + tasks once via forms is faster than typing on a phone).
+
+Plus: auto Telegram reminders twice a day so nothing slips through.
 
 ## ✨ Features
 
+- **Telegram bot** with `/today`, `/summary`, `/pending`, `/projects`, inline-button done/undo, quick `/addproject` and `/addtask`
 - **Project tracker** with categories (Testnet / Bridge-Swap / Daily Claim / Other), chain, priority and notes
 - **Multi-wallet** support (only public addresses + labels — *never* private keys)
 - **Tasks** with `daily` / `weekly` / `once` cadence
 - **One-tap done/undo** plus an audit log of every completion
 - **Auto daily reset** at 00:05 (configurable) so daily tasks come back tomorrow
 - **Telegram reminders** at 08:00 and 20:00 (configurable) with a category breakdown
-- Pure FastAPI + SQLite + vanilla JS — no build step, runs on any cheap VPS / Render / Railway
+- Pure FastAPI + SQLite + python-telegram-bot — no build step, runs on Termux / any cheap VPS
 
 ## 🚫 What this is NOT
 
@@ -39,7 +45,26 @@ python app.py
 ```
 
 Open http://localhost:8090 — you should see the dashboard. Add a project, add a
-few tasks, and you're done.
+few tasks. Then DM your bot on Telegram and send `/today` to see them there too.
+
+## 🤖 Telegram bot commands
+
+Once `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are set, DM the bot:
+
+| Command | What it does |
+|---------|-------------|
+| `/today` | Pending tasks today, grouped by project, with inline ⬜→✅ buttons |
+| `/summary` | Today's progress (same content as the daily reminder) |
+| `/pending` | Flat list of all pending tasks |
+| `/projects` | Browse projects (tap to open detail + tasks) |
+| `/done <id>` | Mark task #id done |
+| `/undo <id>` | Flip task back to pending |
+| `/addproject Name \| category \| chain \| url` | Quick-add a project |
+| `/addtask <project_id> \| Title \| cadence` | Quick-add a task |
+| `/reset` | Manually reset all daily tasks |
+| `/help` | Show this list |
+
+The bot only answers your `TELEGRAM_CHAT_ID` — anyone else messaging it gets "Unauthorized".
 
 ### 📱 Running on Android (Termux)
 
